@@ -45,11 +45,11 @@ class BasicOfferControlllerSpec extends FunSpec with MockFactory {
             val repo = mock[OfferRepository]
             val offer = Offer("name", "desc", 0)
             (repo.getOffer _).expects("id").returns(IO {
-                Some(new RecordWithId(offer, "id"))
+                Some(new OfferWithId(offer, "id"))
             })
             val controller = new BasicOfferController(repo)
             val result = controller.getOffer("id").unsafeRunSync
-            assert(result == Some(new RecordWithId(offer, "id")))
+            assert(result == Some(new OfferWithId(offer, "id")))
         }
     }
 
@@ -58,11 +58,11 @@ class BasicOfferControlllerSpec extends FunSpec with MockFactory {
             val repo = mock[OfferRepository]
             val offer = Offer("name", "desc", 0)
             (repo.getAllOffers _).expects.returns(IO {
-                List(new RecordWithId(offer, "id"))
+                List(new OfferWithId(offer, "id"))
             })
             val controller = new BasicOfferController(repo)
             val result = controller.getAllOffers.unsafeRunSync
-            assert(result == List(new RecordWithId(offer, "id")))
+            assert(result == List(new OfferWithId(offer, "id")))
         }
     }
 }

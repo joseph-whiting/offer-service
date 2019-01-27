@@ -22,11 +22,13 @@ final class InMemoryOfferRepository(
     def getOffer(id: String) = IO {
         for {
             offer <- offers.get(id)
-        } yield RecordWithId(offer, id)
+        } yield OfferWithId(offer, id)
     }
+
     def getAllOffers: IO[Seq[OfferWithId]] = IO {
-        offers.toList.map(p => new RecordWithId(p._2, p._1))
+        offers.toList.map(p => new OfferWithId(p._2, p._1))
     }
+
     def deleteOffer(id: String): IO[Either[String, Unit]] = IO {
         offers.remove(id)
     }.map({
