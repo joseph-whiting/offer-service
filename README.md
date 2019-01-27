@@ -5,7 +5,7 @@ An example of a Scala project implementing a simple REST service using:
 - ScalaCheck: property based testing
 
 ## Notes
-- the property based testing is massive overkill here, since there is no interesting logic at play. Basic unit tests would be just as good.
+- I used property testing & ScalaCheck to begin with, but it's massive overkill here, since there is no interesting logic at play. Hence jsut standard unit tests.
 - http4s seems nice and uncluttered, but apparently isn't as fast as Finangle/Finch
 - pagination, authorisation and authentication would all be required for production
 - it is assumed that offers should not be permitted to have negative price, but 0 is allowed

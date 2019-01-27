@@ -5,19 +5,17 @@ import cats.effect.IO
 import Models._
 import java.util.UUID
 
-// IO { 
-//         UUID.randomUUID().toString
-// }
 final class InMemoryOfferRepository(
-    private val offers: Map[String, Offer],
-    private val generateId: IO[String],
+    os: collection.immutable.Map[String, Offer],
 ) extends OfferRepository {
-
+    private val offers = Map(os.toSeq: _*)
+    private val generateId = IO { 
+        UUID.randomUUID().toString
+    }
     def addOffer(offer: Offer) = for {
         id <- generateId
         _ <- IO {
-            offers += id -> offer // error?
-            println(offers)
+            offers += id -> offer
         }
     } yield id
 
@@ -30,7 +28,9 @@ final class InMemoryOfferRepository(
         offers.toList.map(p => new RecordWithId(p._2, p._1))
     }
     def deleteOffer(id: String): IO[Either[String, Unit]] = IO {
-        offers -= id // TODO - if doesn't exist
-        Right()
-    }
+        offers.remove(id)
+    }.map({
+        case None => Left("Cannot delete an offer that doesn't exist")
+        case Some(_) => Right()
+    })
 }

@@ -1,74 +1,68 @@
 package com.example.offerservice
 
-import org.scalacheck.Properties
-import org.scalacheck.Prop.forAll
-
 import cats.effect.IO
-
+import org.scalatest._
+import org.scalamock.scalatest.MockFactory
 import Models._
-import Generators._
 
-class StubOfferRepo extends OfferRepository {
-    var added = Set[Offer]()
-    var deleted = Set[String]()
-    var got = Set[String]()
-    var gotAll = false
-
-    def getOffer(id: String): IO[Option[OfferWithId]] = IO {
-        got = got + id
-        Some(RecordWithId(Offer("a name", "a description", 10), id))
-    }
-    def getAllOffers: IO[Seq[OfferWithId]] = ???
-    def addOffer(offer: Offer): IO[String] = IO {
-        added = added + offer
-        "someId"
-    }
-    def deleteOffer(id: String): IO[Either[String, Unit]] = IO {
-        deleted = deleted + id
-        Right()
-    }
-}
-
-object BasicOfferControlllerSpec extends Properties("BasicOfferControlllerSpec") {
-    property("add offer should add all non-negative priced offers") = forAll(nonNegativePricedOfferGen) { offer => 
-        val repo = new StubOfferRepo()
-        val controller = new BasicOfferController(repo)
-
-        val result = controller.addOffer(offer) match {
-            case Left(e) => throw new Error("failed")
-            case Right(io) => io.unsafeRunSync()
+class BasicOfferControlllerSpec extends FunSpec with MockFactory {
+    describe("cancel offer") {
+        it("should delete the offer from the repo") {
+            val repo = mock[OfferRepository]
+            (repo.deleteOffer _).expects("id").returns(IO {
+                Left("something")
+            })
+            val controller = new BasicOfferController(repo)
+            val result = controller.cancelOffer("id").unsafeRunSync
+            assert(result == Left("something"))
         }
-        result == "someId" &&
-        repo.added == Set(offer)
-
     }
 
-    property("add offer should return error for negative priced offers") = forAll(negativePricedOfferGen) { offer => 
-        val repo = new StubOfferRepo()
-        val controller = new BasicOfferController(repo)
-        repo.added.size == 0 &&
-            controller.addOffer(offer) == Left("Cannot create an offer with negative price")
+    describe("add offer") {
+        it("should add the offer to the repo if the price is non-negative") {
+            val repo = mock[OfferRepository]
+            val offer = Offer("name", "desc", 0)
+            (repo.addOffer _).expects(offer).returns(IO {
+                "id"
+            })
+            val controller = new BasicOfferController(repo)
+            val result = controller.addOffer(offer).map(_.unsafeRunSync)
+            assert(result == Right("id"))
+        }
+
+        it("should return an error and not add to the repo if the price is negative") {
+            val repo = mock[OfferRepository]
+            val offer = Offer("name", "desc", -1)
+            (repo.addOffer _).expects(*).never
+            val controller = new BasicOfferController(repo)
+            val result = controller.addOffer(offer).map(_.unsafeRunSync)
+            assert(result == Left("Cannot create an offer with negative price"))
+        }
     }
 
-    property("cancel offer should delete from repo") = forAll(nonEmptyString) { id => 
-        val repo = new StubOfferRepo()
-        val controller = new BasicOfferController(repo)
-        val result = controller.cancelOffer(id).unsafeRunSync()
-        result.isRight && repo.deleted == Set(id)
+    describe("get offer") {
+        it("should get the offer from the repo") {
+            val repo = mock[OfferRepository]
+            val offer = Offer("name", "desc", 0)
+            (repo.getOffer _).expects("id").returns(IO {
+                Some(new RecordWithId(offer, "id"))
+            })
+            val controller = new BasicOfferController(repo)
+            val result = controller.getOffer("id").unsafeRunSync
+            assert(result == Some(new RecordWithId(offer, "id")))
+        }
     }
 
-    property("get offer should get from repo") = forAll(nonEmptyString) { id => 
-        val repo = new StubOfferRepo()
-        val controller = new BasicOfferController(repo)
-        val result = controller.getOffer(id).unsafeRunSync()
-        result == Some(RecordWithId(Offer("a name", "a description", 10), id)) && repo.got == Set(id)
+    describe("get all offers") {
+        it("should getAll offers from the repo") {
+            val repo = mock[OfferRepository]
+            val offer = Offer("name", "desc", 0)
+            (repo.getAllOffers _).expects.returns(IO {
+                List(new RecordWithId(offer, "id"))
+            })
+            val controller = new BasicOfferController(repo)
+            val result = controller.getAllOffers.unsafeRunSync
+            assert(result == List(new RecordWithId(offer, "id")))
+        }
     }
-
-    // property("get all offers should get from repo") = forAll(nonEmptyString) { id => 
-    //     val repo = new StubOfferRepo()
-    //     val controller = new BasicOfferController(repo)
-    //     val result = controller.getAllOffers.unsafeRunSync()
-    //     result == List(RecordWithId(Offer("a name", "a description", 10), id), RecordWithId(Offer("another name", "another description", 20), id)) &&
-    //         repo.gotAll
-    // }
 }

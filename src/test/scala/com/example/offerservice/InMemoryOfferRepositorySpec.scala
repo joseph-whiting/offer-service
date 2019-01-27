@@ -1,69 +1,78 @@
 package com.example.offerservice
 
-import org.scalacheck.Properties
-import org.scalacheck.Prop.forAll
-
 import Models._
-import Generators._
 
-import scala.collection.mutable.Map
-import scala.collection.mutable.Set
-
+import org.scalatest._
 import cats._
 import cats.data._
 import cats.implicits._
 import cats.effect.IO
 
-import java.util.UUID
+class InMemoryOfferRepositorySpec extends FunSpec {
+    describe("InMemoryOfferRepository") {
+        describe("get") {
+            it("should return None if the id doesn't exist") {
+                val repo = new InMemoryOfferRepository(Map("id1" -> Offer("name1", "description1", 10)))
+                assert(repo.getOffer("id2").unsafeRunSync == None)
+            }
+            it("should return Some(Offer) if the id existed to begin with") {
+                val offer = Offer("name1", "description1", 10)
+                val repo = new InMemoryOfferRepository(Map("id1" -> offer))
+                assert(repo.getOffer("id1").unsafeRunSync.map(_.record) == Some(offer))
+            }
 
-object InMemoryOfferRepositorySpec extends Properties("InMemoryOfferRepository") {
-    sealed trait Response
-    case class Added(id: String, request: Addition) extends Response
-    case class Deleted(request: Deletion) extends Response
-    case class DeleteFailed(request: Deletion) extends Response
-    case class OfferGot(offer: Option[OfferWithId], request: GetOne) extends Response
-    case class AllOffersGot(offers: Seq[OfferWithId]) extends Response
+            it("should return Some(Offer) if the id is that of an offer that has been added") {
+                val repo = new InMemoryOfferRepository(Map())
+                val offer = new Offer("name", "desc", 10)
+                val io = for {
+                    id <- repo.addOffer(offer)
+                    o <- repo.getOffer(id)
+                } yield o
+                assert(io.unsafeRunSync.map(_.record) == Some(offer))
+            }
 
-    def runRequests(requests: Seq[Request]): IO[List[Response]] = {
-        var ids = requests.collect({
-            case Addition(offer: Offer, idToGenerate: String) => idToGenerate
-        })
-        val generateId = IO {
-            val id = ids.head
-            ids = ids.tail
-            id
+            it("should return None if the id is that of an offer that has been added, and then deleted") {
+                val repo = new InMemoryOfferRepository(Map())
+                val offer = new Offer("name", "desc", 10)
+                val io = for {
+                    id <- repo.addOffer(offer)
+                    _ <- repo.deleteOffer(id)
+                    o <- repo.getOffer(id)
+                } yield o
+                assert(io.unsafeRunSync.map(_.record) == None)
+            }
         }
-        val repo = new InMemoryOfferRepository(Map.empty, generateId)
-        requests.map({
-            case Addition(offer, id) => repo.addOffer(offer).map(Added(_, Addition(offer, id)))
-            case Deletion(id) => repo.deleteOffer(id).map({
-                case Left(_) => DeleteFailed(Deletion(id))
-                case Right(_) => Deleted(Deletion(id))
-            })
-            case GetOne(id) => repo.getOffer(id).map(OfferGot(_, GetOne(id)))
-            case GetAll => repo.getAllOffers.map(AllOffersGot(_))
-        }).toList.sequence
-    }
 
-    property("without deletions, getAll returns all offers that were previously added") = forAll(noDeletionsRequestsGen) { (requests: Seq[Request]) => 
-        val responses = runRequests(requests).unsafeRunSync
-        @scala.annotation.tailrec
-        def check(l: List[Response]): Boolean = l match {
-            case (h: AllOffersGot) :: t => t.collect({case Added(id, _) => id}).toSet == h.offers.map(_.id).toSet && check(t)
-            case h :: t => check(t)
-            case Nil => true
+        describe("getAll") {
+            it("should return all offers that have been added and not deleted") {
+                val offer1 = new Offer("name1", "desc1", 1)
+                val offer2 = new Offer("name2", "desc2", 2)
+                val offer3 = new Offer("name3", "desc3", 3)
+                val repo = new InMemoryOfferRepository(Map("id1" -> offer1))
+                val io = for {
+                    id3 <- repo.addOffer(offer3)
+                    _ <- repo.addOffer(offer2)
+                    _ <- repo.deleteOffer(id3)
+                    offers <- repo.getAllOffers
+                } yield offers
+                assert(io.unsafeRunSync.map(_.record).toSet == Set(offer1, offer2))
+            }
         }
-        check(responses.reverse)
-    }
 
-    property("without deletions, get returns the offer if and only if it was previously added") = forAll(noDeletionsRequestsGen) { (requests: Seq[Request]) => 
-        val responses = runRequests(requests).unsafeRunSync
-        println(responses)
-        def check(l: List[Response]): Boolean = l match {
-            case OfferGot(offer, r) :: t => t.collectFirst({ case Added(id, Addition(addedOffer, _)) if id == r.id => addedOffer }) == offer && check(t)
-            case h :: t => check(t)
-            case Nil => true
+        describe("delete") {
+            it("should return an error message if the id doesn't exist") {
+                val repo = new InMemoryOfferRepository(Map())
+                assert(repo.deleteOffer("some id").unsafeRunSync == Left("Cannot delete an offer that doesn't exist"))
+            }
+
+            it("should return Right() if the id exists") {
+                val repo = new InMemoryOfferRepository(Map())
+                val io = for {
+                    id <- repo.addOffer(new Offer("name", "desc", 10))
+                    x <- repo.deleteOffer(id)
+                } yield x
+                assert(io.unsafeRunSync == Right())
+            }
         }
-        check(responses.reverse)
     }
 }
