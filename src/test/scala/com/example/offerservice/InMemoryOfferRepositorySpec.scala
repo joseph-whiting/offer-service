@@ -7,6 +7,7 @@ import cats._
 import cats.data._
 import cats.implicits._
 import cats.effect.IO
+import scala.util.matching.Regex
 
 class InMemoryOfferRepositorySpec extends FunSpec {
     describe("InMemoryOfferRepository") {
@@ -72,6 +73,16 @@ class InMemoryOfferRepositorySpec extends FunSpec {
                     x <- repo.deleteOffer(id)
                 } yield x
                 assert(io.unsafeRunSync == Right())
+            }
+        }
+
+        describe("add") {
+            it("should generate url-safe ids") {
+                val repo = new InMemoryOfferRepository(Map())
+                val offer = new Offer("name", "desc", 10)
+                val id = repo.addOffer(offer).unsafeRunSync
+                val urlSafeRegex = new Regex("^[a-zA-Z0-9_-]*$")
+                assert(!urlSafeRegex.findFirstIn(id).isEmpty)
             }
         }
     }
