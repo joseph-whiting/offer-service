@@ -39,8 +39,8 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                 val controller = mock[OfferController]
                 (controller.getAllOffers _).expects().returns(IO {
                     List(
-                        OfferWithId(Offer("name1", "desc1", 1), "id1"),
-                        OfferWithId(Offer("name2", "desc2", 2), "id2"),
+                        StoredOffer(Offer("name1", "desc1", 1, 0), "id1", 0),
+                        StoredOffer(Offer("name2", "desc2", 2, 0), "id2", 0),
                     ),
                 })
                 val service = (new OfferService(controller)).service
@@ -52,16 +52,20 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                             "name" -> Json.fromString("name1"),
                             "description" -> Json.fromString("desc1"),
                             "price" -> Json.fromInt(1),
+                            "secondsToExpiry" -> Json.fromInt(0)
                         ),
-                        "id" -> Json.fromString("id1")
+                        "id" -> Json.fromString("id1"),
+                        "creationTime" -> Json.fromInt(0)
                     ),
                     Json.obj(
                         "record" -> Json.obj(
                             "name" -> Json.fromString("name2"),
                             "description" -> Json.fromString("desc2"),
                             "price" -> Json.fromInt(2),
+                            "secondsToExpiry" -> Json.fromInt(0)
                         ),
-                        "id" -> Json.fromString("id2")
+                        "id" -> Json.fromString("id2"),
+                        "creationTime" -> Json.fromInt(0)
                     ),
                 )
                 assert(check[Json](response, Status.Ok, Some(expectedJson)))
@@ -71,7 +75,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
         describe("POST /offers") {
             it("should add a new offer with the controller, returning OK & id if successful") {
                 val controller = mock[OfferController]
-                val offer = Offer("name1", "desc1", 1)
+                val offer = Offer("name1", "desc1", 1, 0)
                 (controller.addOffer _).expects(offer).returns(Right(IO {"anId"}))
                 val service = (new OfferService(controller)).service
                 val response = for {
@@ -81,7 +85,8 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                     ).withBody(Json.obj(
                         "name" -> Json.fromString("name1"),
                         "description" -> Json.fromString("desc1"),
-                        "price" -> Json.fromInt(1)
+                        "price" -> Json.fromInt(1),
+                        "secondsToExpiry" -> Json.fromInt(0)
                     ))
                     r <- service.run(addOffer).getOrElseF(NotFound())
                 } yield r
@@ -90,7 +95,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
 
             it("should add a new offer with the controller, returning BadRequest & error if successful") {
                 val controller = mock[OfferController]
-                val offer = Offer("name1", "desc1", 1)
+                val offer = Offer("name1", "desc1", 1, 0)
                 (controller.addOffer _).expects(offer).returns(Left("an error"))
                 val service = (new OfferService(controller)).service
                 val response = for {
@@ -100,7 +105,8 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                     ).withBody(Json.obj(
                         "name" -> Json.fromString("name1"),
                         "description" -> Json.fromString("desc1"),
-                        "price" -> Json.fromInt(1)
+                        "price" -> Json.fromInt(1),
+                        "secondsToExpiry" -> Json.fromInt(0)
                     ))
                     r <- service.run(addOffer).getOrElseF(NotFound())
                 } yield r
@@ -111,9 +117,9 @@ class OfferServiceSpec extends FunSpec with MockFactory {
         describe("GET /offers/{id}") {
             it("should get the offer with that id from the controller, returning OK & offer if successful") {
                 val controller = mock[OfferController]
-                val offer = Offer("name1", "desc1", 1)
-                val offerWithId = OfferWithId(offer, "id1")
-                (controller.getOffer _).expects("id1").returns(IO {Some(offerWithId)})
+                val offer = Offer("name1", "desc1", 1, 0)
+                val storedOffer = StoredOffer(offer, "id1", 0)
+                (controller.getOffer _).expects("id1").returns(IO {Some(storedOffer)})
                 val service = (new OfferService(controller)).service
                 val getOffer = Request[IO](
                     method = Method.GET,
@@ -124,8 +130,10 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                         "name" -> Json.fromString("name1"),
                         "description" -> Json.fromString("desc1"),
                         "price" -> Json.fromInt(1),
+                        "secondsToExpiry" -> Json.fromInt(0)
                     ),
-                    "id" -> Json.fromString("id1")
+                    "id" -> Json.fromString("id1"),
+                    "creationTime" -> Json.fromInt(0)
                 )
                 val response = service.run(getOffer).getOrElseF(NotFound())
                 assert(check(response, Status.Ok, Some(expectedJson)))
@@ -133,8 +141,8 @@ class OfferServiceSpec extends FunSpec with MockFactory {
 
             it("should return NotFound if no offer returned from controller") {
                 val controller = mock[OfferController]
-                val offer = Offer("name1", "desc1", 1)
-                val offerWithId = OfferWithId(offer, "id1")
+                val offer = Offer("name1", "desc1", 1, 0)
+                val storedOffer = StoredOffer(offer, "id1", 0)
                 (controller.getOffer _).expects("id1").returns(IO {None})
                 val service = (new OfferService(controller)).service
                 val getOffer = Request[IO](
@@ -149,8 +157,8 @@ class OfferServiceSpec extends FunSpec with MockFactory {
         describe("DELETE /offers/{id}") {
             it("should cancel the offer with that id from the controller, returning OK if successful") {
                 val controller = mock[OfferController]
-                val offer = Offer("name1", "desc1", 1)
-                val offerWithId = OfferWithId(offer, "id1")
+                val offer = Offer("name1", "desc1", 1, 0)
+                val storedOffer = StoredOffer(offer, "id1", 0)
                 (controller.cancelOffer _).expects("id1").returns(IO { Right() })
                 val service = (new OfferService(controller)).service
                 val cancelOffer = Request[IO](
@@ -163,8 +171,8 @@ class OfferServiceSpec extends FunSpec with MockFactory {
             }
             it("should cancel the offer with that id from the controller, returning NotFound if error") {
                 val controller = mock[OfferController]
-                val offer = Offer("name1", "desc1", 1)
-                val offerWithId = OfferWithId(offer, "id1")
+                val offer = Offer("name1", "desc1", 1, 0)
+                val storedOffer = StoredOffer(offer, "id1", 0)
                 (controller.cancelOffer _).expects("id1").returns(IO { Left("I had trouble") })
                 val service = (new OfferService(controller)).service
                 val cancelOffer = Request[IO](

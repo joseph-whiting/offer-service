@@ -5,28 +5,26 @@ import cats.effect.IO
 import Models._
 import java.util.UUID
 
-final class InMemoryOfferRepository(
-    os: collection.immutable.Map[String, Offer],
-) extends OfferRepository {
-    private val offers = Map(os.toSeq: _*)
+final class InMemoryOfferRepository extends OfferRepository {
+    private val offers = Map[String, StoredOffer]()
     private val generateId = IO { 
         UUID.randomUUID().toString
     }
-    def addOffer(offer: Offer) = for {
+    def addOffer(offer: Offer, creationTime: Long) = for {
         id <- generateId
         _ <- IO {
-            offers += id -> offer
+            offers += id -> StoredOffer(offer, id, creationTime)
         }
     } yield id
 
     def getOffer(id: String) = IO {
         for {
             offer <- offers.get(id)
-        } yield OfferWithId(offer, id)
+        } yield offer
     }
 
-    def getAllOffers: IO[Seq[OfferWithId]] = IO {
-        offers.toList.map(p => new OfferWithId(p._2, p._1))
+    def getAllOffers: IO[Seq[StoredOffer]] = IO {
+        offers.values.toList
     }
 
     def deleteOffer(id: String): IO[Either[String, Unit]] = IO {

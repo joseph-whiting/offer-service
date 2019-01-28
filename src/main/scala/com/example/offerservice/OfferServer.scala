@@ -1,8 +1,9 @@
 package com.example.offerservice
 
-import cats.effect.IO
 import fs2.StreamApp
 import org.http4s.server.blaze.BlazeBuilder
+import cats.implicits._
+import cats.effect._
 
 import scala.concurrent.ExecutionContext
 
@@ -15,7 +16,7 @@ object HelloWorldServer extends StreamApp[IO] {
 object ServerStream {
 
   def offerService = new OfferService(
-    new BasicOfferController(new InMemoryOfferRepository(Map()))
+    new BasicOfferController(new InMemoryOfferRepository())(Clock.create)
   ).service
 
   def stream(implicit ec: ExecutionContext) =

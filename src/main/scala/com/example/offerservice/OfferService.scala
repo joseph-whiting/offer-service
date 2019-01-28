@@ -15,7 +15,7 @@ import Models._
 
 class OfferService(controller: OfferController) {
   implicit val offerEncoder: Encoder[Offer] = deriveEncoder[Offer]
-  implicit val recordWithIdEncoder: Encoder[OfferWithId] = deriveEncoder[OfferWithId]
+  implicit val recordWithIdEncoder: Encoder[StoredOffer] = deriveEncoder[StoredOffer]
   implicit val offerDecoder = jsonOf[IO, Offer]
   
   val service = HttpService[IO] {

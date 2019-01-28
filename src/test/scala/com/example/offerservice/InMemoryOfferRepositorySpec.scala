@@ -13,30 +13,25 @@ class InMemoryOfferRepositorySpec extends FunSpec {
     describe("InMemoryOfferRepository") {
         describe("get") {
             it("should return None if the id doesn't exist") {
-                val repo = new InMemoryOfferRepository(Map("id1" -> Offer("name1", "description1", 10)))
+                val repo = new InMemoryOfferRepository()
                 assert(repo.getOffer("id2").unsafeRunSync == None)
             }
-            it("should return Some(Offer) if the id existed to begin with") {
-                val offer = Offer("name1", "description1", 10)
-                val repo = new InMemoryOfferRepository(Map("id1" -> offer))
-                assert(repo.getOffer("id1").unsafeRunSync.map(_.record) == Some(offer))
-            }
 
-            it("should return Some(Offer) if the id is that of an offer that has been added") {
-                val repo = new InMemoryOfferRepository(Map())
-                val offer = new Offer("name", "desc", 10)
+            it("should return Some(StoredOffer) if the id is that of an offer that has been added") {
+                val repo = new InMemoryOfferRepository()
+                val offer = Offer("name", "desc", 10, 0)
                 val io = for {
-                    id <- repo.addOffer(offer)
+                    id <- repo.addOffer(offer, 0)
                     o <- repo.getOffer(id)
                 } yield o
                 assert(io.unsafeRunSync.map(_.record) == Some(offer))
             }
 
             it("should return None if the id is that of an offer that has been added, and then deleted") {
-                val repo = new InMemoryOfferRepository(Map())
-                val offer = new Offer("name", "desc", 10)
+                val repo = new InMemoryOfferRepository()
+                val offer = Offer("name", "desc", 10, 0)
                 val io = for {
-                    id <- repo.addOffer(offer)
+                    id <- repo.addOffer(offer, 0)
                     _ <- repo.deleteOffer(id)
                     o <- repo.getOffer(id)
                 } yield o
@@ -46,13 +41,14 @@ class InMemoryOfferRepositorySpec extends FunSpec {
 
         describe("getAll") {
             it("should return all offers that have been added and not deleted") {
-                val offer1 = new Offer("name1", "desc1", 1)
-                val offer2 = new Offer("name2", "desc2", 2)
-                val offer3 = new Offer("name3", "desc3", 3)
-                val repo = new InMemoryOfferRepository(Map("id1" -> offer1))
+                val offer1 = Offer("name1", "desc1", 1, 0)
+                val offer2 = Offer("name2", "desc2", 2, 0)
+                val offer3 = Offer("name3", "desc3", 3, 0)
+                val repo = new InMemoryOfferRepository()
                 val io = for {
-                    id3 <- repo.addOffer(offer3)
-                    _ <- repo.addOffer(offer2)
+                    _ <- repo.addOffer(offer1, 0)
+                    id3 <- repo.addOffer(offer3, 0)
+                    _ <- repo.addOffer(offer2, 0)
                     _ <- repo.deleteOffer(id3)
                     offers <- repo.getAllOffers
                 } yield offers
@@ -62,14 +58,14 @@ class InMemoryOfferRepositorySpec extends FunSpec {
 
         describe("delete") {
             it("should return an error message if the id doesn't exist") {
-                val repo = new InMemoryOfferRepository(Map())
+                val repo = new InMemoryOfferRepository()
                 assert(repo.deleteOffer("some id").unsafeRunSync == Left("Cannot delete an offer that doesn't exist"))
             }
 
             it("should return Right() if the id exists") {
-                val repo = new InMemoryOfferRepository(Map())
+                val repo = new InMemoryOfferRepository()
                 val io = for {
-                    id <- repo.addOffer(new Offer("name", "desc", 10))
+                    id <- repo.addOffer(new Offer("name", "desc", 10, 0), 0)
                     x <- repo.deleteOffer(id)
                 } yield x
                 assert(io.unsafeRunSync == Right())
@@ -78,9 +74,9 @@ class InMemoryOfferRepositorySpec extends FunSpec {
 
         describe("add") {
             it("should generate url-safe ids") {
-                val repo = new InMemoryOfferRepository(Map())
-                val offer = new Offer("name", "desc", 10)
-                val id = repo.addOffer(offer).unsafeRunSync
+                val repo = new InMemoryOfferRepository()
+                val offer = Offer("name", "desc", 10, 0)
+                val id = repo.addOffer(offer, 0).unsafeRunSync
                 val urlSafeRegex = new Regex("^[a-zA-Z0-9_-]*$")
                 assert(!urlSafeRegex.findFirstIn(id).isEmpty)
             }

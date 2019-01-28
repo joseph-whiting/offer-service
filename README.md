@@ -9,3 +9,4 @@ An example of a Scala project implementing a simple REST service using http4s, a
 - it is assumed that offers should not be permitted to have negative price, but 0 is allowed
 - cancellation is implemented as delete, if cancellation-undo were required then cancellation would have to be implemented as a sort of update - and perhaps with some eventual delete to manage the size of the storage
 - if cancellation were no longer implemented as delete, the Http method should probably change
+- time is awkward, a full implementation should probably use a remote clock to stop the system messing things up
