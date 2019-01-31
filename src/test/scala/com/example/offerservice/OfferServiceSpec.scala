@@ -44,7 +44,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                     ),
                 })
                 val service = (new OfferService(controller)).service
-                val getAllOffers = Request[IO](Method.GET, uri("/offers"))
+                val getAllOffers = Request[IO](Method.GET, Uri.uri("/offers"))
                 val response = service.run(getAllOffers).getOrElseF(NotFound())
                 val expectedJson = Json.arr(
                     Json.obj(
@@ -76,12 +76,12 @@ class OfferServiceSpec extends FunSpec with MockFactory {
             it("should add a new offer with the controller, returning OK & id if successful") {
                 val controller = mock[OfferController]
                 val offer = Offer("name1", "desc1", 1, 0)
-                (controller.addOffer _).expects(offer).returns(Right(IO {"anId"}))
+                (controller.addOffer _).expects(offer).once.returns(Right(IO {"anId"}))
                 val service = (new OfferService(controller)).service
                 val response = for {
                     addOffer <- Request[IO](
                         method = Method.POST,
-                        uri = uri("/offers"),
+                        uri = Uri.uri("/offers"),
                     ).withBody(Json.obj(
                         "name" -> Json.fromString("name1"),
                         "description" -> Json.fromString("desc1"),
@@ -101,7 +101,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                 val response = for {
                     addOffer <- Request[IO](
                         method = Method.POST,
-                        uri = uri("/offers"),
+                        uri = Uri.uri("/offers"),
                     ).withBody(Json.obj(
                         "name" -> Json.fromString("name1"),
                         "description" -> Json.fromString("desc1"),
@@ -123,7 +123,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                 val service = (new OfferService(controller)).service
                 val getOffer = Request[IO](
                     method = Method.GET,
-                    uri = uri("/offers/id1"),
+                    uri = Uri.uri("/offers/id1"),
                 )
                 val expectedJson =  Json.obj(
                     "record" -> Json.obj(
@@ -147,7 +147,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                 val service = (new OfferService(controller)).service
                 val getOffer = Request[IO](
                     method = Method.GET,
-                    uri = uri("/offers/id1"),
+                    uri = Uri.uri("/offers/id1"),
                 )
                 val response = service.run(getOffer).getOrElseF(NotFound())
                 assert(check(response, Status.NotFound, None: Option[Json]))
@@ -163,7 +163,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                 val service = (new OfferService(controller)).service
                 val cancelOffer = Request[IO](
                     method = Method.DELETE,
-                    uri = uri("/offers/id1"),
+                    uri = Uri.uri("/offers/id1"),
                 )
 
                 val response = service.run(cancelOffer).getOrElseF(NotFound())
@@ -177,7 +177,7 @@ class OfferServiceSpec extends FunSpec with MockFactory {
                 val service = (new OfferService(controller)).service
                 val cancelOffer = Request[IO](
                     method = Method.DELETE,
-                    uri = uri("/offers/id1"),
+                    uri = Uri.uri("/offers/id1"),
                 )
 
                 val response = service.run(cancelOffer).getOrElseF(NotFound())

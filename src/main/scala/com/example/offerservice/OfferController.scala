@@ -1,10 +1,10 @@
 package com.example.offerservice
 
 import Models._
-
 import cats.effect.IO
 
 trait OfferController {
+    def maintainRepositoryForever(): IO[Unit]
     def addOffer(offer: Offer): Either[String, IO[String]]
     def cancelOffer(id: String): IO[Either[String, Unit]]
     def getOffer(id: String): IO[Option[StoredOffer]]
