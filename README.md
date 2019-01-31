@@ -20,7 +20,8 @@ Tests: `sbt test`
 
 Create an offer:
 
-```curl -X POST \
+```
+curl -X POST \
   http://localhost:8080/offers \
   -H 'Content-Type: application/json' \
   -d '{
@@ -28,7 +29,8 @@ Create an offer:
     "description": "desc",
     "price": 10,
     "secondsToExpiry": 40
-}'```
+}'
+```
 
 (an id is returned)
 
